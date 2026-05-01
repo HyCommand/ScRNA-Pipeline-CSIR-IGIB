@@ -24,14 +24,14 @@ library(tidyr)
 set.seed(1234)
 #Data Loading ----
 matrix_WT <- ReadMtx(
-  mtx = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/WT/WT.scRNA.filtered.matrix.mtx',
-  cells = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/WT/WT.scRNA.filtered.barcodes.tsv',
-  features = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/WT/WT.scRNA.filtered.features.tsv'
+  mtx = '',
+  cells = '',
+  features = ''
 )
 
-matrix_KO <- ReadMtx(mtx = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/KO/KO.scRNA.filtered.matrix.mtx',
-                     cells = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/KO/KO.scRNA.filtered.barcodes.tsv',
-                     features = '/Users/vijeyeshwar/CSIR IGIB/ScRNAseq/iPSCs ScRNA seq/Data/KO/KO.scRNA.filtered.features.tsv')
+matrix_KO <- ReadMtx(mtx = '',
+                     cells = '',
+                     features = '')
 
 #Seurat object creation ----
 
@@ -49,7 +49,7 @@ VlnPlot(KO_unfiltered, features = c("nFeature_RNA", "percentMT"))
 KO <- subset(KO_unfiltered, subset = c(nFeature_RNA >2000 & percentMT < 7))
 
 #Sub Sampling ----
-
+s
 ncell <- min(ncol(Ctrl), ncol(KO))
 Ctrl_subset <- subset(Ctrl, cells = sample(colnames(Ctrl), ncell))
 KO_subset <- subset(KO, cells = sample(colnames(KO), ncell))
