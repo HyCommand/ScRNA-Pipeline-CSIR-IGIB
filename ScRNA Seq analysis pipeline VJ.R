@@ -21,6 +21,7 @@ library(ggforce)
 library(org.Hs.eg.db)
 library(CytoTRACE)
 library(tidyr)
+library(writexl)
 set.seed(1234)
 #Data Loading ----
 matrix_WT <- ReadMtx(
@@ -439,6 +440,68 @@ WT_traj$plot_pseudotime + KO_traj$plot_pseudotime +
   )
 
 ggsave("trajectory_pseudotime_comparison.pdf", width = 18, height = 8)
+#Pseudotime export to Excel ----
+library(writexl)
+
+export_pseudotime <- function(traj, condition_name) {
+  cds  <- traj$cds
+  umap <- reducedDims(cds)$UMAP
+  pt   <- pseudotime(cds)
+  
+  df <- data.frame(
+    cell_barcode   = colnames(cds),
+    condition      = condition_name,
+    seurat_cluster = as.character(colData(cds)$seurat_clusters),
+    cell_type      = as.character(colData(cds)$cell_type),
+    partition      = as.character(partitions(cds)),
+    pseudotime     = pt,
+    UMAP_1         = umap[, 1],
+    UMAP_2         = umap[, 2],
+    row.names      = NULL
+  )
+  
+  # Cells in partitions disconnected from the root get Inf -> flag them, set NA
+  df$reachable_from_root <- is.finite(df$pseudotime)
+  df$pseudotime[!is.finite(df$pseudotime)] <- NA
+  
+  # 0-1 scaled within condition (useful for side-by-side comparison)
+  rng <- range(df$pseudotime, na.rm = TRUE)
+  df$pseudotime_scaled <- (df$pseudotime - rng[1]) / (rng[2] - rng[1])
+  df
+}
+
+pt_WT <- export_pseudotime(WT_traj, "Control")
+pt_KO <- export_pseudotime(KO_traj, "Knockout")
+pt_all <- rbind(pt_WT, pt_KO)
+
+safe_stat <- function(x, f) if (all(is.na(x))) NA_real_ else f(x, na.rm = TRUE)
+
+summarise_pt <- function(df) {
+  df %>%
+    dplyr::group_by(condition, cell_type) %>%
+    dplyr::summarise(
+      n_cells   = dplyr::n(),
+      n_with_pt = sum(!is.na(pseudotime)),
+      pct_with_pt = round(100 * n_with_pt / n_cells, 1),
+      mean_pt   = safe_stat(pseudotime, mean),
+      median_pt = safe_stat(pseudotime, median),
+      sd_pt     = safe_stat(pseudotime, sd),
+      min_pt    = safe_stat(pseudotime, min),
+      max_pt    = safe_stat(pseudotime, max),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(condition, median_pt)
+}
+
+write_xlsx(
+  list(
+    "All_cells"           = pt_all,
+    "Control_cells"       = pt_WT,
+    "Knockout_cells"      = pt_KO,
+    "Summary_by_celltype" = summarise_pt(pt_all)
+  ),
+  path = "Pseudotime_Control_vs_Knockout.xlsx"
+)
 #Cluster wise DE (Bootstrapping iteration) ----
 celltype_to_analyze <- "Cycling cells"
 n_iterations <- 25
